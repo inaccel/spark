@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.inaccel</groupId>
+	<artifactId>inaccel-spark</artifactId>
+
+	<version>${spark.version}_${coral.version}</version>
+
+	<packaging>jar</packaging>
+
+	<name>InAccel - Spark</name>
+	<inceptionYear>2018</inceptionYear>
+	<organization>
+		<name>InAccel</name>
+		<url>https://inaccel.com</url>
+	</organization>
+
+	<build>
+		<plugins>
+
+			<plugin>
+				<groupId>net.alchim31.maven</groupId>
+				<artifactId>scala-maven-plugin</artifactId>
+				<version>4.3.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.1.2</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<excludeGroupIds></excludeGroupIds>
+							<includeGroupIds>com.inaccel</includeGroupIds>
+							<outputDirectory>jars</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.2.0</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>test-jar</goal>
+						</goals>
+						<configuration>
+							<descriptorRefs>
+								<descriptorRef>tests</descriptorRef>
+							</descriptorRefs>
+							<skipIfEmpty>true</skipIfEmpty>
+						</configuration>
+					</execution>
+				</executions>
+				<configuration>
+					<outputDirectory>jars</outputDirectory>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+		</plugins>
+	</build>
+
+	<dependencies>
+
+		<dependency>
+			<groupId>com.inaccel</groupId>
+			<artifactId>coral-api</artifactId>
+			<version>${coral.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-mllib_${scala.binary.version}</artifactId>
+			<version>${spark.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-sql_${scala.binary.version}</artifactId>
+			<version>${spark.version}</version>
+		</dependency>
+
+	</dependencies>
+
+	<properties>
+		<spark.version>2.4.4</spark.version>
+		<coral.version>1.8</coral.version>
+
+		<scala.version>2.11.12</scala.version>
+		<scala.binary.version>2.11</scala.binary.version>
+
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+</project>
