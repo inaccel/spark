@@ -45,7 +45,7 @@
 						</goals>
 						<configuration>
 							<excludeGroupIds></excludeGroupIds>
-							<includeGroupIds>com.inaccel</includeGroupIds>
+							<includeGroupIds>com.inaccel,net.java.dev.jna,io.netty</includeGroupIds>
 							<outputDirectory>jars</outputDirectory>
 						</configuration>
 					</execution>
@@ -115,10 +115,10 @@
 	</dependencies>
 
 	<properties>
-		<spark.version>3.0.0</spark.version>
-		<coral.version>1.8</coral.version>
+		<spark.version>3.0.2</spark.version>
+		<coral.version>2.0.0</coral.version>
 
-		<scala.version>2.12.12</scala.version>
+		<scala.version>2.12.8</scala.version>
 		<scala.binary.version>2.12</scala.binary.version>
 
 		<maven.compiler.source>1.8</maven.compiler.source>

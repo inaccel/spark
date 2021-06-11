@@ -64,7 +64,7 @@ class LogisticRegression extends Serializable {
 		println("\t # numClasses:  " + numClasses)
 		println("\t # numFeatures: " + numFeatures)
 
-		val fpga_data = new InAccelRDD(data).stash()
+		val fpga_data = new InAccelRDD(data).persist()
 		val numExamples = fpga_data.count
 
 		println("\t # numExamples: " + numExamples)
@@ -92,7 +92,7 @@ class LogisticRegression extends Serializable {
 
 		ConsoleTimeReporter.timestamp("C")
 
-		fpga_data.unstash()
+		fpga_data.unpersist()
 
 		ConsoleTimeReporter.timestamp("D")
 

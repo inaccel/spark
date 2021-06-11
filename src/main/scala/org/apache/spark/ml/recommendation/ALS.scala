@@ -52,9 +52,11 @@ import org.apache.spark.util.collection.{OpenHashMap, OpenHashSet, SortDataForma
 import org.apache.spark.util.random.XORShiftRandom
 
 // InAccel (BEGIN)
-import com.inaccel.coral.InAccel
-import com.inaccel.coral.msg.Request
-import com.inaccel.coral.shm.{SharedFloatMatrix, SharedIntMatrix, SharedMemory}
+import com.inaccel.coral.{InAccel, InAccelByteBufAllocator}
+import io.netty.buffer.ByteBuf
+import java.lang.Float.{BYTES => FloatBytes}
+import java.util.concurrent.Future
+import org.apache.spark.rdd.MatrixBuf
 import scala.collection.mutable.ArrayBuffer
 // InAccel (END)
 
@@ -1722,8 +1724,8 @@ object ALS extends DefaultParamsReadable[ALS] with Logging {
 					val indexes = new ArrayBuffer[Int]()
 					val indxs = new ArrayBuffer[Array[Int]]()
 
-					val requests = new ArrayBuffer[InAccel]()
-					val buffers = new ArrayBuffer[Seq[SharedMemory]]()
+					val requests = new ArrayBuffer[Future[Void]]()
+					val buffers = new ArrayBuffer[Seq[MatrixBuf]]()
 
 					var cnt = 0
 					var numRequests: java.lang.Integer = 0
@@ -1765,18 +1767,18 @@ object ALS extends DefaultParamsReadable[ALS] with Logging {
 								indexes += j
 								numRequests += 1
 							} else {
-								val matrixTranspose = new SharedFloatMatrix(size, rank).setRowAttributes(0, 16).alloc
-								val vector = new SharedFloatMatrix(1, size).setRowAttributes(0, 16).alloc
-								val offsets = new SharedIntMatrix(1, numRequests).alloc
-								val lambdas = new SharedFloatMatrix(1, numRequests).alloc
-								val result = new SharedFloatMatrix(numRequests, rank).setRowAttributes(0, 16).alloc
+								val matrixTranspose = new MatrixBuf(size, rank, FloatBytes).setRowAttributes(0, 16).alloc
+								val vector = new MatrixBuf(1, size, FloatBytes).setRowAttributes(0, 16).alloc
+								val offsets = new MatrixBuf(1, numRequests, Integer.BYTES).alloc
+								val lambdas = new MatrixBuf(1, numRequests, FloatBytes).alloc
+								val result = new MatrixBuf(numRequests, rank, FloatBytes).setRowAttributes(0, 16).alloc
 
 								for (r <- 0 until numRequests) {
 									val index = indexes(r)
 									var i = srcPtrs(index)
 									var numExplicits = 0
 
-									offsets.put(0, r, srcPtrs(index + 1) - srcPtrs(index))
+									offsets.setInt(0, r, srcPtrs(index + 1) - srcPtrs(index))
 
 									while (i < srcPtrs(index + 1)) {
 
@@ -1786,28 +1788,28 @@ object ALS extends DefaultParamsReadable[ALS] with Logging {
 										val srcFactor = sortedSrcFactors(blockId)(localIndex)
 
 										for (k <- 0 until rank) {
-											matrixTranspose.put(cnt, k, srcFactor(k));
+											matrixTranspose.setFloat(cnt, k, srcFactor(k));
 										}
 
-										vector.put(0, cnt, ratings(i));
+										vector.setFloat(0, cnt, ratings(i));
 
 										numExplicits += 1
 										cnt += 1
 										i += 1
 									}
 
-									lambdas.put(0, r, (numExplicits * regParam).toFloat)
+									lambdas.setFloat(0, r, (numExplicits * regParam).toFloat)
 								}
 
 								val als = InAccel.submit(
-									new Request("com.inaccel.ml.ALS.Solver")
-										.arg(matrixTranspose)
-										.arg(vector)
-										.arg(offsets)
-										.arg(lambdas)
+									new InAccel.Request("com.inaccel.ml.ALS.Solver")
+										.arg(matrixTranspose.buf)
+										.arg(vector.buf)
+										.arg(offsets.buf)
+										.arg(lambdas.buf)
 										.arg(rank)
 										.arg(numRequests)
-										.arg(result)
+										.arg(result.buf)
 								)
 
 								requests += als
@@ -1827,18 +1829,18 @@ object ALS extends DefaultParamsReadable[ALS] with Logging {
 						j += 1
 					}
 					if (numRequests != 0) {
-						val matrixTranspose = new SharedFloatMatrix(size, rank).setRowAttributes(0, 16).alloc
-						val vector = new SharedFloatMatrix(1, size).setRowAttributes(0, 16).alloc
-						val offsets = new SharedIntMatrix(1, numRequests).alloc
-						val lambdas = new SharedFloatMatrix(1, numRequests).alloc
-						val result = new SharedFloatMatrix(numRequests, rank).setRowAttributes(0, 16).alloc
+						val matrixTranspose = new MatrixBuf(size, rank, FloatBytes).setRowAttributes(0, 16).alloc
+						val vector = new MatrixBuf(1, size, FloatBytes).setRowAttributes(0, 16).alloc
+						val offsets = new MatrixBuf(1, numRequests, Integer.BYTES).alloc
+						val lambdas = new MatrixBuf(1, numRequests, FloatBytes).alloc
+						val result = new MatrixBuf(numRequests, rank, FloatBytes).setRowAttributes(0, 16).alloc
 
 						for (r <- 0 until numRequests) {
 							val index = indexes(r)
 							var i = srcPtrs(index)
 							var numExplicits = 0
 
-							offsets.put(0, r, srcPtrs(index + 1) - srcPtrs(index))
+							offsets.setInt(0, r, srcPtrs(index + 1) - srcPtrs(index))
 
 							while (i < srcPtrs(index + 1)) {
 
@@ -1848,28 +1850,28 @@ object ALS extends DefaultParamsReadable[ALS] with Logging {
 								val srcFactor = sortedSrcFactors(blockId)(localIndex)
 
 								for (k <- 0 until rank) {
-									matrixTranspose.put(cnt, k, srcFactor(k));
+									matrixTranspose.setFloat(cnt, k, srcFactor(k));
 								}
 
-								vector.put(0, cnt, ratings(i));
+								vector.setFloat(0, cnt, ratings(i));
 
 								numExplicits += 1
 								cnt += 1
 								i += 1
 							}
 
-							lambdas.put(0, r, (numExplicits * regParam).toFloat)
+							lambdas.setFloat(0, r, (numExplicits * regParam).toFloat)
 						}
 
 						val als = InAccel.submit(
-							new Request("com.inaccel.ml.ALS.Solver")
-								.arg(matrixTranspose)
-								.arg(vector)
-								.arg(offsets)
-								.arg(lambdas)
+							new InAccel.Request("com.inaccel.ml.ALS.Solver")
+								.arg(matrixTranspose.buf)
+								.arg(vector.buf)
+								.arg(offsets.buf)
+								.arg(lambdas.buf)
 								.arg(rank)
 								.arg(numRequests)
-								.arg(result)
+								.arg(result.buf)
 						)
 
 						requests += als
@@ -1889,25 +1891,25 @@ object ALS extends DefaultParamsReadable[ALS] with Logging {
 						val vector = buffers(c)(1)
 						val offsets = buffers(c)(2)
 						val lambdas = buffers(c)(3)
-						val result = buffers(c)(4).asInstanceOf[SharedFloatMatrix]
+						val result = buffers(c)(4).asInstanceOf[MatrixBuf]
 
-						InAccel.wait(als)
+						als.get
 
 						for (r <- 0 until nRqsts(c)) {
 							dstFactors(indxs(c)(r)) = {
 								val x = new Array[Float](rank)
 								for (k <- 0 until rank) {
-									x(k) = result.get(r, k);
+									x(k) = result.getFloat(r, k);
 								}
 								x
 							}
 						}
 
-						result.free
-						lambdas.free
-						offsets.free
-						vector.free
-						matrixTranspose.free
+						result.buf.release
+						lambdas.buf.release
+						offsets.buf.release
+						vector.buf.release
+						matrixTranspose.buf.release
 					}
 
 					requests.clear

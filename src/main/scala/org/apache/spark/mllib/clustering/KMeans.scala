@@ -279,7 +279,7 @@ class KMeans private (
 			val initTimeInSeconds = (System.nanoTime() - initStartTime) / 1e9
 			logInfo(f"Initialization with $initializationMode took $initTimeInSeconds%.3f seconds.")
 
-			val fpga_data = new InAccelRDD(data.map(_.vector)).stash()
+			val fpga_data = new InAccelRDD(data.map(_.vector)).persist()
 			val numExamples = fpga_data.count
 
 			println("\t # numExamples: " + numExamples)
@@ -323,7 +323,7 @@ class KMeans private (
 
 			ConsoleTimeReporter.timestamp("C")
 
-			fpga_data.unstash()
+			fpga_data.unpersist()
 
 			ConsoleTimeReporter.timestamp("D")
 
